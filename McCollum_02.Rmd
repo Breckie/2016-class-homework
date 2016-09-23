@@ -1,0 +1,165 @@
+---
+title: "McCollum_02.Rmd"
+author: "breckie"
+date: "September 21, 2016"
+output: word_document
+---
+```{r, echo=TRUE}
+library(dplyr)
+library(magrittr)
+```
+
+1a. Say “Vole vasopressin” 10 times as fast as you can. How many times did you trip up?
+ 3/10
+
+1b. What is the mean, median, sd, and interquartile range of the sample?
+
+```{r, echo=TRUE}
+vole_vaso <- c(98,96,94,88,86,82,77,74,70,60,
+           59,52,50,47,40,35,29,13,6,5)
+
+str(vole_vaso)
+summary(vole_vaso)
+sd(vole_vaso)
+```
+
+1st Qu.  Median    Mean    sd
+38.75    59.50     58.05   29.75244
+
+
+1c. What is the standard error of the mean (do this with a formula!)?
+Old fashioned math formula or R code formula? Here is both...
+
+se = (sd/(sqrt(n)))
+
+```{r, echo=TRUE}
+sqrt(20)
+```
+se = 29.75244/4.472136
+
+```{r, echo=TRUE}
+vole_se <- (29.75244/4.472136)
+vole_se
+```
+
+Standard Error = 6.652848
+
+Also, a bit faster would be...
+```{r, echo=TRUE}
+vole_se2 <- sd(vole_vaso)/sqrt(length(vole_vaso))
+vole_se2
+```
+
+No kidding, I wasn't certain that would work!
+
+1d. What does the standard error of the mean tell you about our estimate of the mean values of the population of vole vassopressin?
+
+It tells you how accurate your estimation of the mean is at capturing what is really happening in your population. So for our example with the voles, it says that you can feel pretty good about assuming the actual pop mean vassopressin level would fall between 51.397 and 64.703.
+
+
+2. Sample Size for upper quartiles.
+
+It seems like some info is missing here, I hope it is not crucial...
+
+We can get the upper quartile value of vole vassopressin with
+
+Let’s assume the sample is representative of the popultion.
+
+2a. Use sample() to get just one resample with a sample size of 10. What is its upper quartile?
+
+```{r, echo=TRUE}
+
+vole_sample <- sample(vole_vaso, 10)
+summary(vole_sample)
+
+```
+Here is my sample: 6, 86, 29, 59, 98, 77, 96, 5, 13, 35.
+My 3rd or Upper Quartile (same thing right?) is 72.75.
+
+2b. Build an initial data frame for simulations with the sample sizes 5 through 20. Have 100 simulations per sample size.
+
+```{r, echo=TRUE}
+voleSim <-data.frame(
+  samp_size = rep(5:20, times = 100))
+voleSim$sim <-1:nrow(voleSim)
+
+
+```
+
+2c. Use this data frame to get simulated upper quartiles for each sample size.
+
+```{r, echo=TRUE}
+
+voleUpQuart <- voleSim %>%
+  group_by(sim) %>%
+  mutate(quarts = quantile(sample(vole_vaso, size = samp_size, replace = TRUE), probs = 0.75))
+
+?quantile
+
+View(voleUpQuart)
+```
+2d. With a plot, make a guesstimate as to the best sample size for estimating the upper quartile of the population.
+
+```{r, echo=TRUE}
+
+plot(quarts ~ samp_size, data = voleUpQuart)
+
+```
+10 looks decent, 13 is better.
+
+
+3. SE and CI
+
+3a. With the upper quartile simulations, calculate the SD for each sample size using dplyr
+
+```{r, echo=TRUE}
+#get the sd of upper quartiles for each sample size
+
+#I tried this:
+
+voleSim %>%
+  group_by(samp_size) %>%
+  summarize(sd_quart = sd(voleUpQuart$quarts))
+  
+#And got the same se for all sample sizes which sounede unlikely, Isaac said voleUpQuart has more data so try starting there
+
+voleUpQuart %>%
+  group_by(samp_size) %>%
+  summarize(sd_quart = sd(quarts))
+
+```
+
+
+
+3b. What does this value, the standard error of the upper quartile, mean? 
+
+How good each sample size is at capturing the true upper quartile value (In this case it implies that the more sample sizes you have the more accurate the estimate will be)
+
+3c. What is the CI of the upper quartile with a sample size of 10. What does this mean?
+
+
+```{r, echo=TRUE}
+
+#get all the sample size 10 upper quartiles together, calculate CI
+
+
+voleUpQuart <- voleSim %>%
+  group_by(sim) %>%
+  mutate(quarts = quantile(sample(vole_vaso, size = samp_size, replace = TRUE), probs = 0.75)) %>%
+  filter(samp_size = 10)
+
+
+?filter
+
+voleCI <-filter(voleUpQuart, samp_size == 10)
+
+quantile(voleCI$quarts, probs = c(0.05, 0.1, 0.5, 0.9, 0.95))
+         
+```
+5%       10%      50%      90%      95% 
+56.750   66.725   80.750   92.500   94.075
+
+
+95 times out of 100, the true upper quartile value will be with in +/- 94.075 of these simulated upper quartile values
+
+3d. Extra Credit: Instead of having each sim calculate a upper quartile, and then sifting down to the SE of that upper quartile (or the CI), have each simulation calculate a CI. Then, for just a sample size of 10, how many CI’s contain the true value of 83?
